@@ -1,0 +1,52 @@
+import asyncio
+import telebot
+from gemini_webapi import GeminiClient
+
+# Your Telegram bot token
+BOT_TOKEN = "YourTelegramBotTokenHere"
+
+# Your Telegram group ID
+CHAT_ID = 1234567890
+
+# Initialize the bot
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# Replace with your cookie values
+Secure_1PSID = "YourCookieValueHere"
+Secure_1PSIDTS = "YourCookieValueHere"
+
+# Maximum message length in Telegram
+MAX_MESSAGE_LENGTH = 4096
+
+# Initialize the Gemini client
+async def main():
+    client = GeminiClient(Secure_1PSID, Secure_1PSIDTS, proxies=None)
+    await client.init(timeout=30, auto_close=False, close_delay=300, auto_refresh=True)
+    return client
+
+# Function to send request to Gemini and get response
+async def ask_gemini(question):
+    try:
+        client = await main()
+        response = await client.generate_content(question)
+        response_text = response.text
+
+        # Splitting long response into chunks
+        chunks = [response_text[i:i+MAX_MESSAGE_LENGTH] for i in range(0, len(response_text), MAX_MESSAGE_LENGTH)]
+
+        return chunks
+    except Exception as e:
+        print(f"Error occurred while querying Gemini: {e}")
+        return None
+
+# Function to handle user text messages
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    question = message.text
+    response_chunks = asyncio.run(ask_gemini(question))
+    if response_chunks:
+        for chunk in response_chunks:
+            bot.reply_to(message, chunk)
+
+if __name__ == '__main__':
+    bot.polling()
